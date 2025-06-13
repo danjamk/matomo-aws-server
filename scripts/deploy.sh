@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Matomo AWS Server Deployment Script
-# This script automates the deployment of Matomo on AWS using CDK
+# This script deploys Matomo stacks to AWS (run setup.sh first for initial setup)
 
 set -e
 
@@ -29,92 +29,29 @@ log_error() {
     echo -e "${RED}[ERROR]${NC} $1"
 }
 
-# Check if required tools are installed
-check_prerequisites() {
-    log_info "Checking prerequisites..."
+# Check if setup has been completed
+check_setup() {
+    log_info "Checking setup status..."
     
-    if ! command -v aws &> /dev/null; then
-        log_error "AWS CLI is not installed. Please install it first."
-        exit 1
-    fi
-    
-    if ! command -v cdk &> /dev/null; then
-        log_error "AWS CDK is not installed. Please install it first: npm install -g aws-cdk"
-        exit 1
-    fi
-    
-    if ! command -v python3 &> /dev/null; then
-        log_error "Python 3 is not installed. Please install it first."
-        exit 1
-    fi
-    
-    log_success "All prerequisites are installed"
-}
-
-# Check AWS credentials
-check_aws_credentials() {
-    log_info "Checking AWS credentials..."
-    
-    if ! aws sts get-caller-identity &> /dev/null; then
-        log_error "AWS credentials not configured. Please run 'aws configure' first."
-        exit 1
-    fi
-    
-    local account_id=$(aws sts get-caller-identity --query Account --output text)
-    local region=$(aws configure get region || echo "us-east-1")
-    
-    log_success "AWS credentials configured"
-    log_info "Account ID: $account_id"
-    log_info "Region: $region"
-}
-
-# Install Python dependencies
-install_dependencies() {
-    log_info "Installing Python dependencies..."
-    
-    # Check if venv exists and is properly set up
+    # Check if virtual environment exists
     if [ ! -d "venv" ]; then
-        log_info "Creating virtual environment..."
-        # Try python first (if user has it), then python3
-        if command -v python &> /dev/null; then
-            python -m venv venv
-        else
-            python3 -m venv venv
-        fi
-    fi
-    
-    # Activate virtual environment
-    log_info "Activating virtual environment..."
-    source venv/bin/activate
-    
-    # Verify we're in the virtual environment
-    if [[ "$VIRTUAL_ENV" == "" ]]; then
-        log_error "Failed to activate virtual environment"
+        log_error "Virtual environment not found. Please run ./scripts/setup.sh first."
         exit 1
     fi
     
-    # Upgrade pip and install dependencies
-    pip install --upgrade pip
-    pip install -r requirements.txt
-    
-    log_success "Dependencies installed in virtual environment: $VIRTUAL_ENV"
-}
-
-# Bootstrap CDK if needed
-bootstrap_cdk() {
-    log_info "Checking CDK bootstrap status..."
-    
-    local account_id=$(aws sts get-caller-identity --query Account --output text)
-    local region=$(aws configure get region || echo "us-east-1")
-    
-    # Check if CDK is already bootstrapped
-    if aws cloudformation describe-stacks --stack-name CDKToolkit --region $region &> /dev/null; then
-        log_info "CDK already bootstrapped in $region"
-    else
-        log_info "Bootstrapping CDK in $region..."
-        cdk bootstrap aws://$account_id/$region
-        log_success "CDK bootstrapped"
+    # Check if CDK is available
+    if ! command -v cdk &> /dev/null; then
+        log_error "CDK not found. Please run ./scripts/setup.sh first."
+        exit 1
     fi
+    
+    # Check AWS credentials
+    if ! aws sts get-caller-identity &> /dev/null; then
+        log_error "AWS credentials not configured. Please run ./scripts/setup.sh first."
+        exit 1
+    fi
+    
+    log_success "Setup verified"
 }
 
 # Deploy the stacks
@@ -217,15 +154,12 @@ main() {
     echo "================================"
     echo ""
     
-    check_prerequisites
-    check_aws_credentials
-    install_dependencies
-    bootstrap_cdk
+    check_setup
     deploy_stacks
     show_deployment_info
     
     echo ""
-    log_success "Deployment script completed!"
+    log_success "Deployment completed!"
 }
 
 # Run main function

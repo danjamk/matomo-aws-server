@@ -8,17 +8,20 @@ Deploy Matomo web analytics on AWS EC2 with CDK - cost-optimized and production-
 
 ## 🚀 Quick Start
 
-Deploy Matomo on AWS in 3 simple steps:
+Deploy Matomo on AWS in 4 simple steps:
 
 ```bash
 # 1. Clone and configure
 git clone <this-repo>
 cd matomo-aws-server
 
-# 2. Deploy everything
+# 2. Run one-time setup
+./scripts/setup.sh
+
+# 3. Deploy to AWS
 ./scripts/deploy.sh
 
-# 3. Access Matomo at the provided URL
+# 4. Access Matomo at the provided URL
 ```
 
 **Total deployment time:** ~10-15 minutes  
@@ -52,7 +55,7 @@ cd matomo-aws-server
 - **VPC isolation** - Private database subnets, controlled access
 
 ### 🛠️ Automation
-- **One-command deployment** - `./scripts/deploy.sh`
+- **Two-step deployment** - `./scripts/setup.sh` (once) then `./scripts/deploy.sh` (deploy/test cycles)
 - **Automatic Matomo installation** - Fully configured on first boot
 - **Easy cleanup** - `./scripts/destroy.sh` removes everything
 - **Connection details** - `./scripts/get-info.sh` shows all access info
@@ -295,17 +298,26 @@ Configuration is managed via `cdk.json` context:
 git clone <this-repo>
 cd matomo-aws-server
 
-# Deploy with automation script (handles virtual environment automatically)
+# Step 1: One-time setup (prerequisites, dependencies, CDK bootstrap)
+./scripts/setup.sh
+
+# Step 2: Deploy to AWS (repeat for updates)
 ./scripts/deploy.sh
 ```
 
-**Note**: The script automatically detects and uses your existing virtual environment if present, or creates one if needed.
+**Two-Script Design Benefits:**
+- **Faster iterations** - Skip setup after initial run
+- **Clear workflow** - Setup once, deploy repeatedly
+- **Better debugging** - Separate setup vs deployment issues
 
-The script will:
-- ✅ Check prerequisites
-- ✅ Install dependencies
-- ✅ Bootstrap CDK
-- ✅ Deploy all stacks
+#### Setup Script (`./scripts/setup.sh`) handles:
+- ✅ Check prerequisites (AWS CLI, CDK, Python)
+- ✅ Verify AWS credentials
+- ✅ Create virtual environment & install dependencies
+- ✅ Bootstrap CDK (one-time AWS setup)
+
+#### Deploy Script (`./scripts/deploy.sh`) handles:
+- ✅ Deploy all CDK stacks
 - ✅ Display connection information
 
 ### Method 2: Manual Deployment
@@ -328,6 +340,9 @@ cdk deploy --all
 ```bash
 # Edit cdk.json to enable database
 sed -i '' 's/"enableDatabase": false/"enableDatabase": true/' cdk.json
+
+# Setup (if not done already)
+./scripts/setup.sh
 
 # Deploy
 ./scripts/deploy.sh
@@ -495,7 +510,8 @@ This project includes several utility scripts to help manage your Matomo deploym
 
 | Script | Purpose | Usage |
 |--------|---------|--------|
-| `./scripts/deploy.sh` | **Deploy** - One-command deployment | `./scripts/deploy.sh` |
+| `./scripts/setup.sh` | **Setup** - One-time setup (prerequisites, dependencies, CDK bootstrap) | `./scripts/setup.sh` |
+| `./scripts/deploy.sh` | **Deploy** - Deploy stacks to AWS | `./scripts/deploy.sh` |
 | `./scripts/get-info.sh` | **Info** - Get all deployment details | `./scripts/get-info.sh` |
 | `./scripts/get-db-password.sh` | **Password** - Get database credentials | `./scripts/get-db-password.sh` |
 | `./scripts/destroy.sh` | **Destroy** - Remove all AWS resources | `./scripts/destroy.sh` |
@@ -503,7 +519,10 @@ This project includes several utility scripts to help manage your Matomo deploym
 ### Script Details
 
 ```bash
-# 🚀 Deploy everything from scratch
+# 🛠️ One-time setup (run first)
+./scripts/setup.sh
+
+# 🚀 Deploy to AWS (after setup)
 ./scripts/deploy.sh
 
 # 📊 View all deployment information
