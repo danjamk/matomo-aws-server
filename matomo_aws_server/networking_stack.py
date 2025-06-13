@@ -8,7 +8,7 @@ from constructs import Construct
 
 class NetworkingStack(Stack):
     def __init__(self, scope: Construct, construct_id: str, config: dict, **kwargs) -> None:
-        super().__init__(scope, construct_id, **kwargs)
+        super().__init__(scope, construct_id, description="Matomo Analytics - VPC, subnets, security groups, and networking infrastructure", **kwargs)
         
         self.config = config
         networking_config = config.get("networking", {})

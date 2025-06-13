@@ -182,6 +182,7 @@ show_deployment_info() {
                 local db_endpoint=$(aws cloudformation describe-stacks --stack-name "$database_stack" --query "Stacks[0].Outputs[?OutputKey=='DatabaseEndpoint'].OutputValue" --output text)
                 echo "🗄️  Database: RDS MySQL at $db_endpoint"
                 echo "   Credentials stored in AWS Secrets Manager"
+                echo "   Get password: ./scripts/get-db-password.sh"
             fi
         else
             echo "🗄️  Database: RDS MySQL deployment not enabled"
@@ -189,12 +190,20 @@ show_deployment_info() {
         
         echo ""
         echo "📋 Next Steps:"
-        echo "   1. Wait 3-5 minutes for Matomo installation to complete"
+        echo "   1. Wait 10-15 minutes for Matomo installation to complete"
         echo "   2. Access Matomo at: $matomo_url"
         echo "   3. Complete the web-based setup wizard"
+        echo "   4. Configure DNS and SSL for production use"
         echo ""
-        echo "🧹 To clean up: ./scripts/cleanup.sh"
-        echo "📊 For more info: ./scripts/get-info.sh"
+        echo "🛠️  Useful Scripts:"
+        echo "   🔐 Get DB password: ./scripts/get-db-password.sh"
+        echo "   📊 View all info:   ./scripts/get-info.sh"
+        echo "   🧹 Clean up:        ./scripts/destroy.sh"
+        echo ""
+        echo "⚠️  IMPORTANT: Production Setup Required"
+        echo "   🌍 Configure DNS: Point your domain to $public_ip"
+        echo "   🔒 Setup SSL: Install Let's Encrypt or use ACM"
+        echo "   📖 See README.md for detailed DNS and SSL instructions"
         
     else
         log_error "Could not retrieve deployment information"

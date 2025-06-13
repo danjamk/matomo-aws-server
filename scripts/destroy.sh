@@ -165,17 +165,88 @@ destroy_stacks() {
     # Activate virtual environment if it exists
     if [ -d "venv" ]; then
         source venv/bin/activate
+    elif [ -d ".venv" ]; then
+        source .venv/bin/activate
     fi
     
-    # Destroy all stacks
-    log_info "Destroying all Matomo stacks..."
+    local networking_stack="${PROJECT_NAME}-networking"
+    local database_stack="${PROJECT_NAME}-database"
+    local compute_stack="${PROJECT_NAME}-compute"
+    local max_retries=3
+    local retry_count=0
+    
+    # First try: destroy all stacks together
+    log_info "Attempting to destroy all Matomo stacks together..."
     if cdk destroy --all --force; then
         log_success "All CDK stacks destroyed successfully"
-    else
-        log_error "Failed to destroy some CDK stacks"
-        log_info "You may need to manually clean up remaining resources in the AWS Console"
-        return 1
+        return 0
     fi
+    
+    # If that failed, try destroying stacks individually in the correct order
+    log_warning "Bulk destruction failed, trying individual stack destruction..."
+    
+    # Destroy compute stack first
+    if stack_exists "$compute_stack"; then
+        log_info "Destroying compute stack: $compute_stack"
+        if ! cdk destroy "$compute_stack" --force; then
+            log_warning "Failed to destroy compute stack on first try"
+        fi
+    fi
+    
+    # Destroy database stack second
+    if stack_exists "$database_stack"; then
+        log_info "Destroying database stack: $database_stack"
+        if ! cdk destroy "$database_stack" --force; then
+            log_warning "Failed to destroy database stack on first try"
+        fi
+    fi
+    
+    # Destroy networking stack last with retries (most likely to have dependency issues)
+    if stack_exists "$networking_stack"; then
+        log_info "Destroying networking stack: $networking_stack"
+        
+        while [ $retry_count -lt $max_retries ]; do
+            retry_count=$((retry_count + 1))
+            log_info "Attempt $retry_count of $max_retries to destroy networking stack..."
+            
+            if cdk destroy "$networking_stack" --force; then
+                log_success "Networking stack destroyed successfully"
+                break
+            else
+                if [ $retry_count -lt $max_retries ]; then
+                    log_warning "Networking stack destruction failed, waiting 30 seconds before retry..."
+                    sleep 30
+                else
+                    log_error "Failed to destroy networking stack after $max_retries attempts"
+                    log_info "The networking stack may have dependencies that need manual cleanup"
+                    
+                    # Try to get more information about what's blocking deletion
+                    log_info "Checking for potential blocking resources..."
+                    
+                    # Check for any remaining EC2 instances in the VPC
+                    local vpc_id=$(aws cloudformation describe-stack-resources --stack-name "$networking_stack" --query 'StackResources[?ResourceType==`AWS::EC2::VPC`].PhysicalResourceId' --output text 2>/dev/null || echo "")
+                    if [ ! -z "$vpc_id" ] && [ "$vpc_id" != "None" ]; then
+                        log_info "VPC ID: $vpc_id"
+                        local instances=$(aws ec2 describe-instances --filters "Name=vpc-id,Values=$vpc_id" "Name=instance-state-name,Values=running,stopped,stopping" --query 'Reservations[].Instances[].InstanceId' --output text 2>/dev/null || echo "")
+                        if [ ! -z "$instances" ] && [ "$instances" != "None" ]; then
+                            log_warning "Found EC2 instances still in VPC: $instances"
+                        fi
+                        
+                        # Check for ENIs
+                        local enis=$(aws ec2 describe-network-interfaces --filters "Name=vpc-id,Values=$vpc_id" --query 'NetworkInterfaces[].NetworkInterfaceId' --output text 2>/dev/null || echo "")
+                        if [ ! -z "$enis" ] && [ "$enis" != "None" ]; then
+                            log_warning "Found network interfaces still in VPC: $enis"
+                        fi
+                    fi
+                    
+                    return 1
+                fi
+            fi
+        done
+    fi
+    
+    log_success "Stack destruction process completed"
+    return 0
 }
 
 # Verify cleanup completion
@@ -185,31 +256,61 @@ verify_cleanup() {
     local networking_stack="${PROJECT_NAME}-networking"
     local database_stack="${PROJECT_NAME}-database"
     local compute_stack="${PROJECT_NAME}-compute"
-    local all_clean=true
+    local max_wait_attempts=6  # 6 attempts * 10 seconds = 1 minute
+    local wait_attempt=0
     
-    # Check if stacks still exist
+    # Wait a bit for CloudFormation to update status
+    log_info "Waiting for CloudFormation to update stack status..."
+    
+    while [ $wait_attempt -lt $max_wait_attempts ]; do
+        wait_attempt=$((wait_attempt + 1))
+        local all_clean=true
+        
+        log_info "Verification attempt $wait_attempt of $max_wait_attempts..."
+        
+        # Check if stacks still exist
+        if stack_exists "$compute_stack"; then
+            log_info "Compute stack still exists: $compute_stack"
+            all_clean=false
+        fi
+        
+        if stack_exists "$database_stack"; then
+            log_info "Database stack still exists: $database_stack"
+            all_clean=false
+        fi
+        
+        if stack_exists "$networking_stack"; then
+            log_info "Networking stack still exists: $networking_stack"
+            all_clean=false
+        fi
+        
+        if [ "$all_clean" = true ]; then
+            log_success "All stacks have been successfully removed"
+            return 0
+        elif [ $wait_attempt -lt $max_wait_attempts ]; then
+            log_info "Some stacks still exist, waiting 10 seconds before next check..."
+            sleep 10
+        fi
+    done
+    
+    log_warning "Some resources may still exist after waiting. Final status:"
+    
+    # Final check with warnings
     if stack_exists "$compute_stack"; then
         log_warning "Compute stack still exists: $compute_stack"
-        all_clean=false
     fi
     
     if stack_exists "$database_stack"; then
         log_warning "Database stack still exists: $database_stack"
-        all_clean=false
     fi
     
     if stack_exists "$networking_stack"; then
         log_warning "Networking stack still exists: $networking_stack"
-        all_clean=false
     fi
     
-    if [ "$all_clean" = true ]; then
-        log_success "All stacks have been successfully removed"
-        return 0
-    else
-        log_warning "Some resources may still exist. Check the AWS Console for any remaining resources."
-        return 1
-    fi
+    log_warning "Check the AWS Console for any remaining resources."
+    log_info "Some resources may take additional time to fully clean up."
+    return 1
 }
 
 # Show cleanup completion message

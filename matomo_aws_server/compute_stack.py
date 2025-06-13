@@ -20,7 +20,7 @@ class ComputeStack(Stack):
         config: dict = None,
         **kwargs
     ) -> None:
-        super().__init__(scope, construct_id, **kwargs)
+        super().__init__(scope, construct_id, description="Matomo Analytics - EC2 instance with automated Matomo installation and SSH key management", **kwargs)
         
         self.vpc = vpc
         self.public_subnets = public_subnets
@@ -176,12 +176,12 @@ class ComputeStack(Stack):
         
         CfnOutput(
             self, "SshKeyParameterName",
-            value=f"/ec2/keypair/{self.key_pair.key_pair_name}",
+            value=f"/ec2/keypair/{self.key_pair.key_pair_id}",
             description="Parameter Store name for SSH private key"
         )
         
         CfnOutput(
             self, "SshCommand",
-            value=f"aws ssm get-parameter --name '/ec2/keypair/{self.key_pair.key_pair_name}' --with-decryption --query 'Parameter.Value' --output text > matomo-key.pem && chmod 400 matomo-key.pem && ssh -i matomo-key.pem ec2-user@{self.instance.instance_public_ip}",
+            value=f"aws ssm get-parameter --name '/ec2/keypair/{self.key_pair.key_pair_id}' --with-decryption --query 'Parameter.Value' --output text > matomo-key.pem && chmod 400 matomo-key.pem && ssh -i matomo-key.pem ec2-user@{self.instance.instance_public_ip}",
             description="SSH command to connect to the instance (retrieve key from Parameter Store first)"
         )

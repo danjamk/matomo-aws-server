@@ -90,17 +90,40 @@ if [ ! -z "$SECRET_ARN" ]; then
 fi
 
 # Configure Apache virtual host
-logit "Configuring Apache virtual host"
+logit "Configuring Apache virtual host with PHP-FPM security settings"
 cat > /etc/httpd/conf.d/matomo.conf << 'APACHEEOF'
 <VirtualHost *:80>
     DocumentRoot /var/www/html
     ErrorLog /var/log/httpd/matomo_error.log
     CustomLog /var/log/httpd/matomo_access.log combined
     
+    # Security fix for PHP-FPM: Prevent direct access to sensitive directories
+    ProxyPass /config !
+    ProxyPass /tmp !
+    ProxyPass /lang !
+    ProxyPass /libs !
+    
     <Directory /var/www/html>
         AllowOverride All
         Require all granted
     </Directory>
+    
+    # Additional security: Block access to sensitive files and directories
+    <Location "/config">
+        Require all denied
+    </Location>
+    
+    <Location "/tmp">
+        Require all denied
+    </Location>
+    
+    <Files "*.log">
+        Require all denied
+    </Files>
+    
+    <Files "config.ini.php">
+        Require all denied
+    </Files>
 </VirtualHost>
 APACHEEOF
 
