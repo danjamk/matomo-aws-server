@@ -1,6 +1,15 @@
 # Matomo AWS Server
-
 Deploy Matomo web analytics on AWS EC2 with CDK - cost-optimized and production-ready.
+This CDK project provides infrastructure-as-code deployment for a self-hosted Matomo analytics server on AWS. 
+By deploying your own Matomo instance, you gain full data ownership, eliminate sampling limitations, and consolidate 
+multiple marketing tools (heatmaps, A/B testing, attribution) into a single platform. This approach is particularly 
+valuable for Shopify stores requiring custom analytics, first-party data control, and the ability to join visitor 
+data with customer databases for advanced attribution modeling. The deployment includes EC2 instance provisioning, 
+RDS MySQL setup, and basic security configurations to get you up and running quickly.
+
+The following article talks a bit more about the motivations.  
+[Self-Hosted Matomo Web Analytics on AWS: How We Enhanced Our Shopify Analytics Stack and Cut Marketing Tool Costs](https://medium.com/@dan.jam.kuhn/self-hosted-matomo-web-analytics-on-aws-how-we-enhanced-our-shopify-analytics-stack-and-cut-3476526132a8)
+
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![AWS CDK](https://img.shields.io/badge/AWS%20CDK-v2.165.0-orange)](https://aws.amazon.com/cdk/)
