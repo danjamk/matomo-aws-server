@@ -21,7 +21,7 @@ cd matomo-aws-server
 # 3. Access Matomo at the provided URL
 ```
 
-**Total deployment time:** ~5-10 minutes  
+**Total deployment time:** ~10-15 minutes  
 **Monthly cost:** $32-55 (depending on free tier eligibility)
 
 ## 📋 Table of Contents
@@ -54,8 +54,22 @@ cd matomo-aws-server
 ### 🛠️ Automation
 - **One-command deployment** - `./scripts/deploy.sh`
 - **Automatic Matomo installation** - Fully configured on first boot
-- **Easy cleanup** - `./scripts/cleanup.sh` removes everything
+- **Easy cleanup** - `./scripts/destroy.sh` removes everything
 - **Connection details** - `./scripts/get-info.sh` shows all access info
+- **Cross-platform** - Linux/macOS native, Windows via WSL2
+
+### ⚠️ What This Project Does NOT Include
+
+This project focuses on core infrastructure deployment. **You will need to configure separately**:
+
+- 🌍 **Domain Name / DNS** - Point your domain to the EC2 instance
+- 🔒 **SSL Certificates** - Set up HTTPS with Let's Encrypt, ACM, or your own certs  
+- 📧 **Email Configuration** - SMTP settings for Matomo notifications
+- 🔄 **Load Balancing** - For high-availability deployments
+- 📊 **Advanced Monitoring** - CloudWatch dashboards, alerting
+- 🔐 **WAF / DDoS Protection** - Additional security layers
+
+**This keeps the project simple and focused** while giving you flexibility to add these components as needed.
 
 ## 📋 Prerequisites
 
@@ -73,6 +87,99 @@ aws configure
 # Verify access
 aws sts get-caller-identity
 ```
+
+### 🪟 Windows Users
+
+This project uses Bash scripts that don't run natively on Windows. **We recommend using WSL (Windows Subsystem for Linux)** for the best experience:
+
+#### **Option 1: WSL2 (Recommended)**
+```powershell
+# Install WSL2 with Ubuntu (run as Administrator)
+wsl --install
+
+# Restart your computer when prompted
+
+# Access your project files in WSL
+wsl
+cd /mnt/c/path/to/your/project/matomo-aws-server
+
+# Install tools in WSL Ubuntu environment
+sudo apt update
+sudo apt install python3 python3-pip nodejs npm git
+
+# Install AWS CLI
+curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip"
+unzip awscliv2.zip
+sudo ./aws/install
+
+# Install CDK
+sudo npm install -g aws-cdk
+
+# Configure AWS (your Windows AWS credentials work in WSL)
+aws configure
+
+# Use project normally
+./scripts/deploy.sh
+```
+
+#### **Option 2: Manual Deployment (PowerShell)**
+If you prefer not to use WSL, you can deploy manually:
+```powershell
+# Install Python, Node.js, AWS CLI, and CDK on Windows first
+# Then in PowerShell:
+
+python -m venv venv
+venv\Scripts\activate
+pip install -r requirements.txt
+
+# Deploy manually
+cdk bootstrap
+cdk deploy --all
+
+# Get deployment info
+aws cloudformation describe-stacks --stack-name matomo-analytics-compute --query "Stacks[0].Outputs"
+```
+
+#### **WSL Benefits:**
+- ✅ All scripts work exactly as documented
+- ✅ No modifications needed
+- ✅ Same experience as macOS/Linux
+- ✅ Full compatibility with project instructions
+
+### 🐧 Linux Users
+
+**Excellent news!** This project has **native Linux support** with no modifications needed. Linux compatibility is actually better than macOS since most tools are designed for Linux first.
+
+#### **Ubuntu/Debian Setup:**
+```bash
+# Install required tools
+sudo apt update
+sudo apt install python3 python3-pip python3-venv nodejs npm git curl unzip
+
+# Install AWS CLI
+curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip"
+unzip awscliv2.zip && sudo ./aws/install
+
+# Install CDK
+sudo npm install -g aws-cdk
+
+# Configure AWS and deploy
+aws configure
+./scripts/deploy.sh
+```
+
+#### **RHEL/CentOS/Fedora:**
+```bash
+# Replace 'apt' with 'dnf' (or 'yum' for older versions)
+sudo dnf install python3 python3-pip nodejs npm git curl unzip
+# Then follow AWS CLI and CDK installation above
+```
+
+#### **Linux Advantages:**
+- ✅ **Native Bash support** - All scripts work perfectly
+- ✅ **Package managers** - Easy dependency installation  
+- ✅ **No compatibility issues** - Everything runs natively
+- ✅ **Container-ready** - Perfect for CI/CD pipelines
 
 ### Permissions Required
 Your AWS user/role needs these permissions:
@@ -249,6 +356,9 @@ After deployment, you'll receive:
 # View all deployment details
 ./scripts/get-info.sh
 
+# Get database password specifically
+./scripts/get-db-password.sh
+
 # Get just the SSH command
 cdk outputs | grep SshCommand
 ```
@@ -262,6 +372,18 @@ cdk outputs | grep SshCommand
 ssh -i matomo-key.pem ec2-user@YOUR-EC2-IP
 ```
 
+### Database Credentials
+When RDS MySQL is enabled, database credentials are automatically generated and stored securely:
+
+```bash
+# Get database username and password
+./scripts/get-db-password.sh
+
+# Alternative: Manual retrieval using AWS CLI
+SECRET_ARN=$(aws cloudformation describe-stacks --stack-name matomo-analytics-database --query "Stacks[0].Outputs[?OutputKey=='DatabaseSecretArn'].OutputValue" --output text)
+aws secretsmanager get-secret-value --secret-id $SECRET_ARN --query 'SecretString' --output text | python -c "import sys, json; data=json.load(sys.stdin); print(f'Username: {data[\"username\"]}'); print(f'Password: {data[\"password\"]}')"
+```
+
 ### Matomo Setup
 
 1. **Access the web interface** at the provided URL
@@ -270,6 +392,39 @@ ssh -i matomo-key.pem ec2-user@YOUR-EC2-IP
    - Admin user: Create your admin account
    - Website: Add your first website to track
 3. **Install the tracking code** on your website
+
+### ⚠️ Important: DNS and SSL Setup Required
+
+**This project deploys Matomo with HTTP only** and provides a public IP address. For production use, you'll need to configure:
+
+#### 🌍 Domain Name Setup
+1. **Point your domain** to the EC2 instance public IP:
+   ```bash
+   # Example DNS A record
+   analytics.yourdomain.com → YOUR-EC2-PUBLIC-IP
+   ```
+
+2. **Update Matomo trusted hosts** in `/var/www/html/config/config.ini.php`:
+   ```ini
+   [General]
+   trusted_hosts[] = "analytics.yourdomain.com"
+   ```
+
+#### 🔒 SSL Certificate Setup
+1. **Install Let's Encrypt** (recommended for free SSL):
+   ```bash
+   sudo dnf install certbot python3-certbot-apache
+   sudo certbot --apache -d analytics.yourdomain.com
+   ```
+
+2. **Or use AWS Certificate Manager** with Application Load Balancer
+3. **Or bring your own certificate** and configure Apache SSL
+
+#### 🛡️ Security Considerations
+- **Never use HTTP in production** - Always configure SSL/TLS
+- **Update trusted hosts** to prevent HTTP Host header attacks
+- **Consider AWS WAF** for additional protection
+- **Set up monitoring** and backup strategies
 
 ### Monitoring Installation Progress
 ```bash
@@ -334,12 +489,39 @@ For detailed security information, see [SECURITY.md](docs/SECURITY.md).
 
 For detailed cost information, see [COSTS.md](docs/COSTS.md).
 
+## 🛠️ Available Scripts
+
+This project includes several utility scripts to help manage your Matomo deployment:
+
+| Script | Purpose | Usage |
+|--------|---------|--------|
+| `./scripts/deploy.sh` | **Deploy** - One-command deployment | `./scripts/deploy.sh` |
+| `./scripts/get-info.sh` | **Info** - Get all deployment details | `./scripts/get-info.sh` |
+| `./scripts/get-db-password.sh` | **Password** - Get database credentials | `./scripts/get-db-password.sh` |
+| `./scripts/destroy.sh` | **Destroy** - Remove all AWS resources | `./scripts/destroy.sh` |
+
+### Script Details
+
+```bash
+# 🚀 Deploy everything from scratch
+./scripts/deploy.sh
+
+# 📊 View all deployment information
+./scripts/get-info.sh
+
+# 🔐 Get database username and password
+./scripts/get-db-password.sh
+
+# 🧹 Complete cleanup (removes everything)
+./scripts/destroy.sh
+```
+
 ## 🧹 Cleanup
 
 ### Complete Cleanup
 ```bash
 # Remove all AWS resources
-./scripts/cleanup.sh
+./scripts/destroy.sh
 ```
 
 This will:
@@ -360,6 +542,21 @@ cdk destroy matomo-analytics-networking
 
 ### Common Issues
 
+#### Scripts Don't Work on Windows
+```bash
+# Error: './scripts/deploy.sh' is not recognized...
+# Solution: Use WSL2 (recommended)
+wsl --install
+wsl
+cd /mnt/c/path/to/matomo-aws-server
+./scripts/deploy.sh
+
+# Alternative: Deploy manually with PowerShell
+python -m venv venv
+venv\Scripts\activate
+cdk deploy --all
+```
+
 #### Deployment Fails
 ```bash
 # Check CDK bootstrap status
@@ -373,7 +570,7 @@ aws cloudformation describe-stack-events --stack-name matomo-analytics-networkin
 ```
 
 #### Can't Access Matomo
-- Wait 3-5 minutes for installation to complete
+- Wait 10-15 minutes for installation to complete
 - Check security group allows HTTP (port 80)
 - Verify EC2 instance is running
 - Check installation logs on the server
@@ -390,6 +587,7 @@ For more troubleshooting help, see [TROUBLESHOOTING.md](docs/TROUBLESHOOTING.md)
 - [Security Guide](docs/SECURITY.md) - Detailed security considerations
 - [Cost Optimization](docs/COSTS.md) - Advanced cost optimization strategies  
 - [Troubleshooting](docs/TROUBLESHOOTING.md) - Common issues and solutions
+- [Matomo Analytics Examples](MATOMO_ANALYTICS_EXAMPLES.md) - SQL queries for e-commerce analytics with Matomo
 
 ## 🤝 Contributing
 

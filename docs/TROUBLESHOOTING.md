@@ -501,7 +501,7 @@ sudo journalctl --since "1 hour ago"
 
 3. **Redeploy from scratch**:
    ```bash
-   ./scripts/cleanup.sh
+   ./scripts/destroy.sh
    ./scripts/deploy.sh
    ```
 

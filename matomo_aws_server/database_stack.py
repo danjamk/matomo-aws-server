@@ -21,7 +21,7 @@ class DatabaseStack(Stack):
         config: dict,
         **kwargs
     ) -> None:
-        super().__init__(scope, construct_id, **kwargs)
+        super().__init__(scope, construct_id, description="Matomo Analytics - RDS MySQL database with Secrets Manager integration", **kwargs)
         
         self.vpc = vpc
         self.database_security_group = database_security_group

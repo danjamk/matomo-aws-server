@@ -241,7 +241,14 @@ display_deployment_info() {
     echo "Open Matomo:     open $matomo_url"
     echo "SSH to server:   ssh -i matomo-key.pem ec2-user@$public_ip"
     echo "View logs:       ssh -i matomo-key.pem ec2-user@$public_ip 'sudo tail -f /var/log/matomo-install.log'"
-    echo "Cleanup:         ./scripts/cleanup.sh"
+    echo "Cleanup:         ./scripts/destroy.sh"
+    echo ""
+    echo -e "${YELLOW}⚠️  PRODUCTION CHECKLIST${NC}"
+    echo "==================="
+    echo "🌍 Configure DNS:   Point your domain to $public_ip"
+    echo "🔒 Setup SSL:       Install Let's Encrypt certificates"
+    echo "🛡️  Update hosts:    Edit Matomo trusted_hosts[] setting"
+    echo "📖 Full guide:      See README.md for complete instructions"
     echo ""
     
     # Check status
