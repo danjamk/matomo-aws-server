@@ -1,5 +1,6 @@
 # Matomo AWS Server
 Deploy Matomo web analytics on AWS EC2 with CDK - cost-optimized and production-ready.
+
 This CDK project provides infrastructure-as-code deployment for a self-hosted Matomo analytics server on AWS. 
 By deploying your own Matomo instance, you gain full data ownership, eliminate sampling limitations, and consolidate 
 multiple marketing tools (heatmaps, A/B testing, attribution) into a single platform. This approach is particularly 
@@ -32,9 +33,6 @@ cd matomo-aws-server
 
 # 4. Access Matomo at the provided URL
 ```
-
-**Total deployment time:** ~10-15 minutes  
-**Monthly cost:** $32-55 (depending on free tier eligibility)
 
 ## 📋 Table of Contents
 
