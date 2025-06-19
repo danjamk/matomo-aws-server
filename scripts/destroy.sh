@@ -12,6 +12,9 @@ YELLOW='\033[1;33m'
 BLUE='\033[0;34m'
 NC='\033[0m' # No Color
 
+# Configuration
+FORCE_MODE=false
+
 # Functions
 log_info() {
     echo -e "${BLUE}[INFO]${NC} $1"
@@ -121,6 +124,11 @@ show_deletion_plan() {
 
 # Confirm deletion
 confirm_deletion() {
+    if [ "$FORCE_MODE" = true ]; then
+        log_warning "Force mode enabled - skipping confirmation"
+        return 0
+    fi
+    
     echo -e "${YELLOW}Are you sure you want to delete all Matomo resources?${NC}"
     echo "Type 'DELETE' to confirm (case sensitive): "
     read -r confirmation
@@ -352,6 +360,44 @@ handle_cleanup_errors() {
     echo ""
 }
 
+# Parse command line arguments
+parse_arguments() {
+    while [[ $# -gt 0 ]]; do
+        case $1 in
+            --force|-f)
+                FORCE_MODE=true
+                shift
+                ;;
+            --help|-h)
+                show_usage
+                exit 0
+                ;;
+            *)
+                echo "Unknown option: $1"
+                show_usage
+                exit 1
+                ;;
+        esac
+    done
+}
+
+# Show usage information
+show_usage() {
+    echo "Usage: $0 [OPTIONS]"
+    echo ""
+    echo "Completely removes all AWS resources created by the Matomo deployment"
+    echo ""
+    echo "Options:"
+    echo "  --force, -f         Skip confirmation prompts and force deletion"
+    echo "  --help, -h          Show this help message"
+    echo ""
+    echo "Examples:"
+    echo "  $0                  # Interactive mode with confirmation"
+    echo "  $0 --force          # Force deletion without prompts"
+    echo ""
+    echo "WARNING: This will permanently delete all resources and data!"
+}
+
 # Main execution
 main() {
     echo ""
@@ -382,5 +428,6 @@ main() {
     log_success "Cleanup process completed!"
 }
 
-# Run main function
-main "$@"
+# Parse arguments and run main function
+parse_arguments "$@"
+main
