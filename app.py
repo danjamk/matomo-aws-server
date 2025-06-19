@@ -4,6 +4,7 @@ import aws_cdk as cdk
 from matomo_aws_server.networking_stack import NetworkingStack
 from matomo_aws_server.database_stack import DatabaseStack
 from matomo_aws_server.compute_stack import ComputeStack
+from matomo_aws_server.monitoring_stack import MonitoringStack
 
 app = cdk.App()
 
@@ -11,6 +12,7 @@ app = cdk.App()
 config = app.node.try_get_context("matomo") or {}
 project_name = config.get("projectName", "matomo-analytics")
 enable_database = config.get("enableDatabase", False)
+enable_monitoring = config.get("enableMonitoring", False)
 
 # Create environment configuration
 env = cdk.Environment(
@@ -50,6 +52,23 @@ compute_stack = ComputeStack(
     config=config,
     env=env
 )
+
+# Optionally deploy monitoring stack
+monitoring_stack = None
+if enable_monitoring:
+    monitoring_stack = MonitoringStack(
+        app,
+        f"{project_name}-monitoring",
+        compute_stack=compute_stack,
+        database_stack=database_stack,
+        networking_stack=networking_stack,
+        config=config,
+        env=env
+    )
+    # Add dependencies to all other stacks
+    monitoring_stack.add_dependency(compute_stack)
+    if database_stack:
+        monitoring_stack.add_dependency(database_stack)
 
 # Add stack dependencies
 if database_stack:
