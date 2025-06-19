@@ -613,7 +613,9 @@ For more troubleshooting help, see [TROUBLESHOOTING.md](docs/TROUBLESHOOTING.md)
 - [Security Guide](docs/SECURITY.md) - Detailed security considerations
 - [Cost Optimization](docs/COSTS.md) - Advanced cost optimization strategies  
 - [Troubleshooting](docs/TROUBLESHOOTING.md) - Common issues and solutions
-- [Matomo Analytics Examples](MATOMO_ANALYTICS_EXAMPLES.md) - SQL queries for e-commerce analytics with Matomo
+- [Matomo Analytics Examples](docs/MATOMO_ANALYTICS_EXAMPLES.md) - SQL queries for e-commerce analytics with Matomo
+- [Advanced Analytics Documentation](docs/matomo-advanced-analytics-documentation.md) - Comprehensive guide to advanced Matomo SQL queries
+- [Advanced Analytics SQL File](docs/matomo-advanced-analytics-examples.sql) - Complete SQL query collection
 
 ## 🤝 Contributing
 

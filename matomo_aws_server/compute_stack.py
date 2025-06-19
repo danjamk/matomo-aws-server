@@ -79,6 +79,23 @@ class ComputeStack(Stack):
             ]
         ))
         
+        # Add CloudWatch permissions for monitoring
+        role.add_to_policy(iam.PolicyStatement(
+            effect=iam.Effect.ALLOW,
+            actions=[
+                "cloudwatch:PutMetricData",
+                "logs:CreateLogGroup",
+                "logs:CreateLogStream",
+                "logs:PutLogEvents",
+                "logs:DescribeLogGroups",
+                "logs:DescribeLogStreams",
+                "logs:PutRetentionPolicy",
+                "ec2:DescribeVolumes",
+                "ec2:DescribeTags",
+            ],
+            resources=["*"]
+        ))
+        
         # Add permissions to read from Secrets Manager if database is enabled
         if self.database_stack:
             role.add_to_policy(iam.PolicyStatement(

@@ -37,6 +37,11 @@ dnf install -y \
     unzip \
     wget
 
+# Install CloudWatch Agent
+logit "Installing CloudWatch Agent"
+wget -O /tmp/amazon-cloudwatch-agent.rpm https://amazoncloudwatch-agent.s3.amazonaws.com/amazon_linux/amd64/latest/amazon-cloudwatch-agent.rpm
+rpm -U /tmp/amazon-cloudwatch-agent.rpm
+
 # Start and enable Apache
 logit "Starting Apache service"
 systemctl start httpd
@@ -168,5 +173,102 @@ logit "Installation script finished at: $(date)"
 logit "Restarting Apache to finalize installation"
 systemctl restart httpd
 
+# Configure CloudWatch Agent for basic monitoring
+logit "Configuring CloudWatch Agent"
+cat > /opt/aws/amazon-cloudwatch-agent/etc/amazon-cloudwatch-agent.json << 'CWEOF'
+{
+    "agent": {
+        "metrics_collection_interval": 300,
+        "run_as_user": "cwagent"
+    },
+    "metrics": {
+        "namespace": "Matomo/EC2",
+        "metrics_collected": {
+            "cpu": {
+                "measurement": [
+                    "cpu_usage_idle",
+                    "cpu_usage_iowait",
+                    "cpu_usage_user",
+                    "cpu_usage_system"
+                ],
+                "metrics_collection_interval": 300
+            },
+            "disk": {
+                "measurement": [
+                    "used_percent"
+                ],
+                "metrics_collection_interval": 300,
+                "resources": [
+                    "*"
+                ]
+            },
+            "diskio": {
+                "measurement": [
+                    "io_time"
+                ],
+                "metrics_collection_interval": 300,
+                "resources": [
+                    "*"
+                ]
+            },
+            "mem": {
+                "measurement": [
+                    "mem_used_percent"
+                ],
+                "metrics_collection_interval": 300
+            },
+            "netstat": {
+                "measurement": [
+                    "tcp_established",
+                    "tcp_time_wait"
+                ],
+                "metrics_collection_interval": 300
+            },
+            "swap": {
+                "measurement": [
+                    "swap_used_percent"
+                ],
+                "metrics_collection_interval": 300
+            }
+        }
+    },
+    "logs": {
+        "logs_collected": {
+            "files": {
+                "collect_list": [
+                    {
+                        "file_path": "/var/log/httpd/matomo_access.log",
+                        "log_group_name": "/aws/ec2/matomo/apache-access",
+                        "log_stream_name": "{instance_id}",
+                        "retention_in_days": 7
+                    },
+                    {
+                        "file_path": "/var/log/httpd/matomo_error.log",
+                        "log_group_name": "/aws/ec2/matomo/apache-error",
+                        "log_stream_name": "{instance_id}",
+                        "retention_in_days": 7
+                    },
+                    {
+                        "file_path": "/var/log/matomo-install.log",
+                        "log_group_name": "/aws/ec2/matomo/install",
+                        "log_stream_name": "{instance_id}",
+                        "retention_in_days": 7
+                    }
+                ]
+            }
+        }
+    }
+}
+CWEOF
+
+# Start CloudWatch Agent
+logit "Starting CloudWatch Agent"
+/opt/aws/amazon-cloudwatch-agent/bin/amazon-cloudwatch-agent-ctl \
+    -a fetch-config \
+    -m ec2 \
+    -c file:/opt/aws/amazon-cloudwatch-agent/etc/amazon-cloudwatch-agent.json \
+    -s
+
 logit "Final status check"
 systemctl status httpd --no-pager
+systemctl status amazon-cloudwatch-agent --no-pager

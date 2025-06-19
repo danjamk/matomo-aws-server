@@ -54,6 +54,7 @@
     "matomo": {
       "projectName": "matomo-analytics",
       "enableDatabase": true,
+      "enableMonitoring": true,
       "costOptimized": true,
       "instanceType": "t3.micro",
       "allowedSshCidr": "0.0.0.0/0",
@@ -67,6 +68,13 @@
         "singleNatGateway": true,
         "enableVpcEndpoints": false,
         "vpcCidr": "10.0.0.0/16"
+      },
+      "monitoring": {
+        "enableDashboard": true,
+        "enableAlarms": true,
+        "notificationEmail": "dan.jam.kuhn@gmail.com",
+        "logRetentionDays": 7,
+        "detailedMonitoring": false
       }
     }
   }
