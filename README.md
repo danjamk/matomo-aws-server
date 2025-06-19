@@ -18,8 +18,21 @@ The following article talks a bit more about the motivations.
 
 ## 🚀 Quick Start
 
-Deploy Matomo on AWS in 4 simple steps:
+Deploy Matomo on AWS in 3 simple steps:
 
+### Option 1: Using Make (Recommended)
+```bash
+# 1. Clone and configure
+git clone <this-repo>
+cd matomo-aws-server
+
+# 2. Complete deployment with validation
+make fresh-deploy
+
+# 3. Access Matomo at the provided URL
+```
+
+### Option 2: Using Scripts Directly
 ```bash
 # 1. Clone and configure
 git clone <this-repo>
@@ -42,6 +55,8 @@ cd matomo-aws-server
 - [Configuration](#-configuration)
 - [Deployment](#-deployment)
 - [Usage](#-usage)
+- [Makefile Commands](#%EF%B8%8F-makefile-commands)
+- [Available Scripts](#%EF%B8%8F-available-scripts)
 - [Security](#-security)
 - [Costs](#-costs)
 - [Troubleshooting](#-troubleshooting)
@@ -299,7 +314,23 @@ Configuration is managed via `cdk.json` context:
 
 ## 🚀 Deployment
 
-### Method 1: Automated Deployment (Recommended)
+### Method 1: Using Makefile (Recommended)
+```bash
+# Clone the repository
+git clone <this-repo>
+cd matomo-aws-server
+
+# Complete deployment with validation
+make fresh-deploy
+```
+
+**Makefile Benefits:**
+- **Single command deployment** - Everything automated
+- **Built-in validation** - Automatic post-deployment checks
+- **Better error handling** - Intelligent retry and wait logic
+- **Convenient workflows** - Common tasks simplified
+
+### Method 2: Using Scripts Directly
 ```bash
 # Clone the repository
 git clone <this-repo>
@@ -327,7 +358,7 @@ cd matomo-aws-server
 - ✅ Deploy all CDK stacks
 - ✅ Display connection information
 
-### Method 2: Manual Deployment
+### Method 3: Manual Deployment
 ```bash
 # Install dependencies
 python3 -m venv venv
@@ -448,7 +479,56 @@ aws secretsmanager get-secret-value --secret-id $SECRET_ARN --query 'SecretStrin
 - **Consider AWS WAF** for additional protection
 - **Set up monitoring** and backup strategies
 
-### Monitoring Installation Progress
+### Post-Deployment Validation
+
+After deployment, use the validation scripts to ensure everything is working correctly:
+
+```bash
+# 1. Validate AWS infrastructure
+./scripts/validate-infrastructure.sh
+
+# 2. Validate Matomo installation (single check)
+./scripts/validate-matomo.sh
+
+# 3. Wait for Matomo installation to complete (for fresh deployments)
+./scripts/validate-matomo.sh --wait
+
+```
+
+#### Validation Features
+
+**Infrastructure Validation (`validate-infrastructure.sh`)**:
+- ✅ Verifies VPC, subnets, and security groups
+- ✅ Checks EC2 instance status and configuration
+- ✅ Validates RDS instance status and AWS resources (if enabled)
+- ✅ Tests security group rules and access restrictions
+- ✅ Validates database credentials in Secrets Manager
+- ℹ️ **Note**: Database is in private subnets (not publicly accessible - this is correct)
+
+**Matomo Installation Validation (`validate-matomo.sh`)**:
+- ✅ Tests HTTP connectivity to Matomo URL
+- ✅ Validates web interface response and content
+- ✅ Detects installation wizard vs. completed setup
+- ✅ Checks SSL/HTTPS configuration
+- ✅ **Wait mode**: Monitors installation progress with intelligent retry
+- ✅ **Timeout control**: Configurable wait time (default: 15 minutes)
+
+```bash
+# Basic validation (single check)
+./scripts/validate-matomo.sh
+
+# Wait for installation to complete
+./scripts/validate-matomo.sh --wait
+
+# Custom timeout (30 minutes)
+./scripts/validate-matomo.sh --wait --timeout 1800
+
+# Custom retry interval (60 seconds)
+./scripts/validate-matomo.sh --wait --interval 60
+```
+
+
+### Manual Installation Monitoring
 ```bash
 # SSH into the server and check logs
 ssh -i matomo-key.pem ec2-user@YOUR-EC2-IP
@@ -511,9 +591,90 @@ For detailed security information, see [SECURITY.md](docs/SECURITY.md).
 
 For detailed cost information, see [COSTS.md](docs/COSTS.md).
 
+## 🛠️ Makefile Commands
+
+This project includes a comprehensive Makefile that wraps all scripts with convenient commands:
+
+### Quick Reference
+
+```bash
+# Get help and see all available commands
+make help
+
+# Common workflows
+make fresh-deploy          # Complete first-time deployment
+make quick-deploy           # Quick deployment (setup already done)
+make redeploy              # Redeploy after changes
+make check                 # Validate everything is working
+
+# Information and status
+make info                  # Get deployment details
+make status                # Alias for info
+make password              # Get database credentials
+
+# Validation
+make validate              # Run all validation checks
+make validate-all          # Run all validation with wait mode
+make validate-matomo-wait  # Wait for Matomo installation
+
+# Cleanup
+make clean                 # Interactive cleanup
+make clean-force           # Automated cleanup (no prompts)
+
+# Advanced
+make ssh                   # Connect to EC2 instance
+make logs                  # View installation logs
+make open                  # Open Matomo in browser
+make diff                  # Preview changes
+```
+
+### Available Commands
+
+| Command | Description |
+|---------|-------------|
+| `make help` | Show all available commands with descriptions |
+| `make setup` | Run one-time setup (prerequisites, dependencies, CDK bootstrap) |
+| `make deploy` | Deploy Matomo infrastructure to AWS |
+| `make info` | Get all deployment information (IP, SSH, database details) |
+| `make password` | Get database username and password |
+| `make validate-infrastructure` | Validate AWS infrastructure |
+| `make validate-matomo` | Validate Matomo installation (single check) |
+| `make validate-matomo-wait` | Wait for Matomo installation to complete |
+| `make validate` | Run all validation checks |
+| `make validate-all` | Run all validation checks with wait mode |
+| `make clean` | Remove all AWS resources (interactive) |
+| `make clean-force` | Remove all AWS resources (no prompts) |
+| `make ssh` | Connect to EC2 instance via SSH |
+| `make logs` | View Matomo installation logs |
+| `make open` | Open Matomo URL in browser |
+| `make diff` | Preview deployment changes |
+| `make version` | Show tool versions and AWS account info |
+
+### Workflow Examples
+
+```bash
+# First-time deployment
+make fresh-deploy
+
+# Daily development workflow
+make diff                  # Preview changes
+make redeploy             # Deploy changes
+make check                # Verify everything works
+
+# Troubleshooting
+make validate-infrastructure  # Check AWS resources
+make validate-matomo-wait    # Wait for installation
+make logs                    # View installation logs
+make ssh                     # Connect to debug
+
+# Cleanup
+make clean                # Interactive cleanup
+make clean-force          # For CI/CD automation
+```
+
 ## 🛠️ Available Scripts
 
-This project includes several utility scripts to help manage your Matomo deployment:
+For users who prefer direct script usage, this project includes several utility scripts:
 
 | Script | Purpose | Usage |
 |--------|---------|--------|
@@ -521,7 +682,9 @@ This project includes several utility scripts to help manage your Matomo deploym
 | `./scripts/deploy.sh` | **Deploy** - Deploy stacks to AWS | `./scripts/deploy.sh` |
 | `./scripts/get-info.sh` | **Info** - Get all deployment details | `./scripts/get-info.sh` |
 | `./scripts/get-db-password.sh` | **Password** - Get database credentials | `./scripts/get-db-password.sh` |
-| `./scripts/destroy.sh` | **Destroy** - Remove all AWS resources | `./scripts/destroy.sh` |
+| `./scripts/validate-infrastructure.sh` | **Validate** - Verify AWS infrastructure | `./scripts/validate-infrastructure.sh` |
+| `./scripts/validate-matomo.sh` | **Validate** - Check Matomo installation | `./scripts/validate-matomo.sh [--wait]` |
+| `./scripts/destroy.sh` | **Destroy** - Remove all AWS resources | `./scripts/destroy.sh [--force]` |
 
 ### Script Details
 
@@ -538,19 +701,58 @@ This project includes several utility scripts to help manage your Matomo deploym
 # 🔐 Get database username and password
 ./scripts/get-db-password.sh
 
-# 🧹 Complete cleanup (removes everything)
+# ✅ Validate infrastructure (VPC, security groups, EC2, RDS)
+./scripts/validate-infrastructure.sh
+
+# ✅ Validate Matomo installation (web interface)
+./scripts/validate-matomo.sh
+
+# ✅ Wait for Matomo installation to complete (with timeout)
+./scripts/validate-matomo.sh --wait --timeout 1800
+
+
+# 🧹 Complete cleanup with confirmation
 ./scripts/destroy.sh
+
+# 🧹 Force cleanup without prompts (for automation)
+./scripts/destroy.sh --force
 ```
 
 ## 🧹 Cleanup
 
 ### Complete Cleanup
+
 ```bash
-# Remove all AWS resources
+# Interactive cleanup (with confirmation)
 ./scripts/destroy.sh
+
+# Force cleanup without prompts (for automation)
+./scripts/destroy.sh --force
 ```
 
-This will:
+#### Cleanup Options
+
+**Interactive Mode (Default)**:
+- Shows detailed deletion plan
+- Requires typing "DELETE" to confirm
+- 5-second countdown before proceeding
+- Safe for manual use
+
+**Force Mode (`--force` or `-f`)**:
+- Shows deletion plan but skips confirmation
+- No prompts or countdowns
+- Perfect for automation/CI-CD
+- Use with caution!
+
+```bash
+# Examples
+./scripts/destroy.sh                    # Interactive confirmation
+./scripts/destroy.sh --force            # Skip all prompts  
+./scripts/destroy.sh -f                 # Short form
+./scripts/destroy.sh --help             # Show usage
+```
+
+Both modes will:
 - ⚠️ **Permanently delete** all AWS resources
 - ⚠️ **Delete all data** (Matomo database, analytics data)
 - ✅ Stop all ongoing charges
@@ -596,6 +798,12 @@ aws cloudformation describe-stack-events --stack-name matomo-analytics-networkin
 ```
 
 #### Can't Access Matomo
+```bash
+# Use validation scripts to diagnose issues
+./scripts/validate-infrastructure.sh     # Check AWS resources
+./scripts/validate-matomo.sh --wait      # Wait for installation
+```
+
 - Wait 10-15 minutes for installation to complete
 - Check security group allows HTTP (port 80)
 - Verify EC2 instance is running
